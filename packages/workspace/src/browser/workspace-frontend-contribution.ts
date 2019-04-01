@@ -15,7 +15,7 @@
  ********************************************************************************/
 
 import { injectable, inject, postConstruct } from 'inversify';
-import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry } from '@theia/core/lib/common';
+import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry, SelectionService } from '@theia/core/lib/common';
 import { isOSX, environment, OS } from '@theia/core';
 import { open, OpenerService, CommonMenus, StorageService, LabelProvider, ConfirmDialog, KeybindingRegistry, KeybindingContribution } from '@theia/core/lib/browser';
 import { FileDialogService, OpenFileDialogProps, FileDialogTreeFilters } from '@theia/filesystem/lib/browser';
@@ -27,6 +27,7 @@ import { WorkspaceCommands } from './workspace-commands';
 import { QuickOpenWorkspace } from './quick-open-workspace';
 import { WorkspacePreferences } from './workspace-preferences';
 import URI from '@theia/core/lib/common/uri';
+import { UriAwareCommandHandler } from '@theia/core/lib/common/uri-command-handler';
 
 @injectable()
 export class WorkspaceFrontendContribution implements CommandContribution, KeybindingContribution, MenuContribution {
@@ -39,6 +40,7 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
     @inject(QuickOpenWorkspace) protected readonly quickOpenWorkspace: QuickOpenWorkspace;
     @inject(FileDialogService) protected readonly fileDialogService: FileDialogService;
     @inject(WorkspacePreferences) protected preferences: WorkspacePreferences;
+    @inject(SelectionService) protected readonly selectionService: SelectionService;
 
     @inject(ContextKeyService)
     protected readonly contextKeyService: ContextKeyService;
@@ -87,6 +89,10 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
             isEnabled: () => this.workspaceService.isMultiRootWorkspaceOpened,
             execute: () => this.saveWorkspaceAs()
         });
+        commands.registerCommand(WorkspaceCommands.SAVE_AS,
+            new UriAwareCommandHandler(this.selectionService, {
+                execute: (uri: URI) => this.saveAs(uri),
+            }));
     }
 
     registerMenus(menus: MenuModelRegistry): void {
@@ -124,6 +130,10 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
         menus.registerMenuAction(CommonMenus.FILE_CLOSE, {
             commandId: WorkspaceCommands.CLOSE.id
         });
+
+        menus.registerMenuAction(CommonMenus.FILE_SAVE, {
+            commandId: WorkspaceCommands.SAVE_AS.id,
+        });
     }
 
     registerKeybindings(keybindings: KeybindingRegistry): void {
@@ -144,6 +154,10 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
         keybindings.registerKeybinding({
             command: WorkspaceCommands.OPEN_RECENT_WORKSPACE.id,
             keybinding: 'ctrlcmd+alt+r',
+        });
+        keybindings.registerKeybinding({
+            command: WorkspaceCommands.SAVE_AS.id,
+            keybinding: 'ctrl+shift+s',
         });
     }
 
@@ -304,13 +318,46 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
                 }
                 exist = await this.fileSystem.exists(selected.toString());
                 if (exist) {
-                    overwrite = await this.confirmOverwrite(selected); // TODO this should be handled differently in Electron.
+                    // Prompt users for confirmation before overwriting.
+                    // Electron already handles the confirmation so do not prompt again.
+                    overwrite = this.isElectron() ? true : await this.confirmOverwrite(selected);
                 }
             }
         } while (selected && exist && !overwrite);
 
         if (selected) {
             this.workspaceService.save(selected);
+        }
+    }
+
+    /**
+     * Save source `URI` to target.
+     *
+     * @param uri the source `URI`.
+     */
+    protected async saveAs(uri: URI): Promise<void> {
+        let exist: boolean = false;
+        let overwrite: boolean = false;
+        let target: URI | undefined;
+        const stat = await this.fileSystem.getFileStat(uri.toString());
+        do {
+            target = await this.fileDialogService.showSaveDialog(
+                {
+                    title: WorkspaceCommands.SAVE_AS.label!,
+                    filters: {},
+                    inputValue: uri.path.base
+                }, stat);
+            if (target) {
+                exist = await this.fileSystem.exists(target.toString());
+                if (exist) {
+                    // Prompt users for confirmation before overwriting.
+                    // Electron already handles the confirmation so do not prompt again.
+                    overwrite = this.isElectron() ? true : await this.confirmOverwrite(target);
+                }
+            }
+        } while (target && exist && !overwrite);
+        if (target) {
+            this.fileSystem.copy(uri.toString(), target.toString(), { overwrite });
         }
     }
 

@@ -109,7 +109,8 @@ export class ElectronFileDialogService extends DefaultFileDialogService {
 
     protected toSaveDialogOptions(uri: URI, props: SaveFileDialogProps): SaveDialogOptions {
         const buttonLabel = props.saveLabel;
-        return { ...this.toDialogOptions(uri, props, 'Save'), buttonLabel };
+        const defaultPath = props.inputValue;
+        return { ...this.toDialogOptions(uri, props, 'Save'), buttonLabel, defaultPath };
     }
 
 }
