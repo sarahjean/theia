@@ -5,6 +5,7 @@
 - [filesystem] added the menu item `Upload Files...` to easily upload files into a workspace
 - [task] added support to configure tasks
 - [workspace] allow creation of files and folders using recursive paths
+- [tree] support icons in node tail decorators
 
 Breaking changes:
 

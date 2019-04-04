@@ -236,13 +236,29 @@ export namespace TreeDecoration {
     /**
      * Unlike caption suffixes, tail decorations appears right-aligned after the caption and the caption suffixes (is any).
      */
-    export interface TailDecoration extends CaptionAffix {
+    export interface TailDecoration {
+
+        /**
+         * The text content of the tail decoration.
+         */
+        readonly data?: string;
+
+        /**
+         * Font data for customizing the content.
+         */
+        readonly fontData?: FontData;
 
         /**
          * Optional tooltip for the tail decoration.
          */
         readonly tooltip?: string;
 
+        /**
+         * If a string, should be the name of the Font Awesome icon with out the `fa fa-` prefix, just the name, for instance `paw`.
+         * If an array, it should be the entire Font Awesome class arrray, for instance ['fa', 'fa-paw']
+         * For the existing icons, see here: https://fontawesome.com/v4.7.0/icons/.
+         */
+        readonly icon: string | string[];
     }
 
     /**
@@ -315,10 +331,11 @@ export namespace TreeDecoration {
         readonly position: IconOverlayPosition;
 
         /**
-         * This should be the name of the Font Awesome icon with out the `fa fa-` prefix, just the name, for instance `paw`.
+         * If a string, this should be the name of the Font Awesome icon with out the `fa fa-` prefix, just the name, for instance `paw`.
+         * If an array, it should be the entire Font Awesome class arrray, for instance ['fa', 'fa-paw']
          * For the existing icons, see here: https://fontawesome.com/v4.7.0/icons/.
          */
-        readonly icon: string;
+        readonly icon: string | string[];
 
         /**
          * The color of the overlaying icon. If not specified, then the default icon color will be used.

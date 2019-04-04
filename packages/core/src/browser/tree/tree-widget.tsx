@@ -548,13 +548,13 @@ export class TreeWidget extends ReactWidget implements StatefulWidget {
         new Map(this.getDecorationData(node, 'iconOverlay').reverse().filter(notEmpty)
             .map(overlay => [overlay.position, overlay] as [TreeDecoration.IconOverlayPosition, TreeDecoration.IconOverlay]))
             .forEach((overlay, position) => {
-                const overlayClass = (iconName: string) =>
-                    ['a', 'fa', `fa-${iconName}`, TreeDecoration.Styles.DECORATOR_SIZE_CLASS, TreeDecoration.IconOverlayPosition.getStyle(position)].join(' ');
+                const iconClasses = [TreeDecoration.Styles.DECORATOR_SIZE_CLASS, TreeDecoration.IconOverlayPosition.getStyle(position)];
                 const style = (color?: string) => color === undefined ? {} : { color };
                 if (overlay.background) {
-                    overlayIcons.push(<span key={node.id + 'bg'} className={overlayClass(overlay.background.shape)} style={style(overlay.background.color)}></span>);
+                    overlayIcons.push(<span key={node.id + 'bg'} className={this.getIconClass(overlay.background.shape, iconClasses)} style={style(overlay.background.color)}>
+                    </span>);
                 }
-                overlayIcons.push(<span key={node.id} className={overlayClass(overlay.icon)} style={style(overlay.color)}></span>);
+                overlayIcons.push(<span key={node.id} className={this.getIconClass(overlay.icon, iconClasses)} style={style(overlay.color)}></span>);
             });
 
         if (overlayIcons.length > 0) {
@@ -568,13 +568,21 @@ export class TreeWidget extends ReactWidget implements StatefulWidget {
         const style = (fontData: TreeDecoration.FontData | undefined) => this.applyFontStyles({}, fontData);
         return <React.Fragment>
             {this.getDecorationData(node, 'tailDecorations').filter(notEmpty).reduce((acc, current) => acc.concat(current), []).map((decoration, index) => {
-                const { fontData, data, tooltip } = decoration;
+                const { fontData, data, tooltip, icon } = decoration;
                 const className = [TREE_NODE_SEGMENT_CLASS, TREE_NODE_TAIL_CLASS].join(' ');
+                const content = data ? data : icon ? <span key={node.id + 'icon' + index} className={this.getIconClass(icon)}></span> : '';
                 return <div key={node.id + className + index} className={className} style={style(fontData)} title={tooltip}>
-                    {data}
+                    {content}
                 </div>;
             })}
         </React.Fragment>;
+    }
+
+    // Determine the classes to use for an icon
+    // Assumes a Font Awesome name when passed a single string, otherwise uses the passed string array
+    private getIconClass(iconName: string | string[], additionalClasses: string[] = []): string {
+        const iconClass = (typeof iconName === 'string') ? ['a', 'fa', `fa-${iconName}`] : ['a'].concat(iconName);
+        return iconClass.concat(additionalClasses).join(' ');
     }
 
     protected renderNode(node: TreeNode, props: NodeProps): React.ReactNode {
